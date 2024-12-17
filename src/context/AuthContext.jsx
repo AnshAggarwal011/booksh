@@ -12,24 +12,35 @@ export const AuthProvider = ({ children }) => {
     withCredentials: true, // Include cookies in requests
   });
 
+  // Check if user is logged in on initial load
   useEffect(() => {
     const userId = sessionStorage.getItem('userId');
-    if (!userId) {
-      setUser(null); // Clear user state if session expired
+    if (userId) {
+      fetchUserName(userId).then((name) => {
+        setUser({ userId, name });
+      });
     }
   }, []);
 
+  // Signup function
   const signup = async (name, email, password) => {
-    const response = await api.post('/auth/signup', { name, email, password });
-    const { userId } = response.data;
-  
-    // Store userId in sessionStorage
-    sessionStorage.setItem('userId', userId);
-  
-    setUser({ name, email, userId });
-    return userId;
+    try {
+      const response = await api.post('/auth/signup', { name, email, password });
+      const { userId } = response.data;
+
+      // Store userId in sessionStorage
+      sessionStorage.setItem('userId', userId);
+
+      setUser({ name, email, userId });
+      return userId;
+    } catch (error) {
+      console.error('Signup error:', error.response ? error.response.data : error.message);
+      alert('Signup failed. Please try again later.');
+      throw error; // Re-throw to ensure the caller is aware of the failure
+    }
   };
 
+  // Login function
   const login = async (email, password) => {
     try {
       const response = await api.post('/auth/login', { email, password });
@@ -58,14 +69,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Logout function
   const logout = async () => {
-    await api.post('/auth/logout');
-    setUser(null);
+    try {
+      await api.post('/auth/logout');
+      sessionStorage.removeItem('userId');
+      setUser(null);
+    } catch (err) {
+      console.error('Logout error:', err.message);
+    }
   };
 
+  // Fetch the user name by userId
   const fetchUserName = async (userId) => {
-    const response = await api.get(`/auth/user/${userId}`);
-    return response.data.name;
+    try {
+      const response = await api.get(`/auth/user/${userId}`);
+      return response.data.name;
+    } catch (err) {
+      console.error('Error fetching username:', err);
+      return '';
+    }
   };
 
   return (
